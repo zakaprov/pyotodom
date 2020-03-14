@@ -84,7 +84,10 @@ def _int(number, default=None):
     return get_number_from_string(number, int, default)
 
 
-def get_number_from_string(s, number_type, default):
+def get_number_from_string(s, number_type, default = 0):
+    # Remove all non-digit characters from the string
+    s = re.sub('\D', '', s)
+
     try:
         return number_type(s.replace(",", "."))
     except ValueError:

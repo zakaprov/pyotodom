@@ -6,7 +6,7 @@ import sys
 from bs4 import BeautifulSoup
 
 from otodom import WHITELISTED_DOMAINS
-from otodom.utils import get_response_for_url, get_url
+from otodom.utils import get_response_for_url, get_url, _int, _float
 
 if sys.version_info < (3, 3):
     from urlparse import urlparse
@@ -25,25 +25,26 @@ def parse_category_offer(offer_markup):
     :rtype: dict(string, string)
     :return: see the return section of :meth:`scrape.category.get_category` for more information
     """
+    result = {}
+
     html_parser = BeautifulSoup(offer_markup, "html.parser")
     link = html_parser.find("a")
     url = link.attrs['href']
-    offer_id = html_parser.find('article').attrs.get('data-item-id')
-    if not url:
-        # detail url is not present
+    if not url or urlparse(url).hostname not in WHITELISTED_DOMAINS:
         return {}
-    if urlparse(url).hostname not in WHITELISTED_DOMAINS:
-        # domain is not supported by this backend
-        return {}
+
     try:
-        poster = html_parser.find(class_="offer-item-details-bottom").find(class_="pull-right")
-    except AttributeError:
-        poster = ''
-    return {
-        'detail_url': url,
-        'offer_id': offer_id,
-        'poster': poster.text.strip() if poster else "",
-    }
+        result['detail_url'] = url
+        result['offer_id'] = html_parser.find('article').attrs.get('data-item-id')
+        result['price'] = _int(html_parser.find(class_='offer-item-price').text)
+        result['area_sqrm'] = _float(html_parser.find(class_='offer-item-area').text)
+        result['room_count'] = _int(html_parser.find(class_='offer-item-rooms').text)
+        result['district'] = html_parser.find(class_='offer-item-header').find('p').text
+        result['title'] = html_parser.find(class_='offer-item-title').text
+    except Exception as e:
+        log.error('error while parsing category offer: %s', e)
+
+    return result
 
 
 def parse_category_content(markup):
